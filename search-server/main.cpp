@@ -14,6 +14,23 @@ using namespace std;
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 const double EPSILON = 1e-6;
 
+struct Document
+{
+	int id;
+	double relevance;
+	int rating;
+};
+
+ostream& operator<<(ostream& os, const Document& doc)
+{
+	return os << "("s << doc.id << ", "s << doc.relevance << ", "s << doc.rating << ")"s;
+}
+
+bool operator==(const Document doc1, const Document doc2)
+{
+	return doc1.id == doc2.id && doc1.rating == doc2.rating && abs(doc1.relevance - doc2.relevance) < EPSILON;
+}
+
 template <typename Fst, typename Snd>
 ostream& operator<<(ostream* os, const pair <Fst, Snd>& pr)
 {
@@ -24,9 +41,9 @@ template <typename Container>
 void Print(ostream& os, const Container& container)
 {
 	bool is_first = true;
-	for(const auto& element : container)
+	for (const auto& element : container)
 	{
-		if(!is_first)
+		if (!is_first)
 		{
 			os << ", "s;
 		}
@@ -103,13 +120,6 @@ enum class DocumentStatus
 	REMOVED
 };
 
-struct Document
-{
-	int id;
-	double relevance;
-	int rating;
-};
-
 class SearchServer
 {
 public:
@@ -142,9 +152,9 @@ public:
 	vector<Document> FindTopDocuments(const string& raw_query) const
 	{
 		return FindTopDocuments(raw_query, [](const int document_id, DocumentStatus status, int rating)
-											{
-												return status == DocumentStatus::ACTUAL;
-											});
+			{
+				return status == DocumentStatus::ACTUAL;
+			});
 	}
 
 	template <typename Criterion>
@@ -300,9 +310,9 @@ private:
 	vector<Document> FindAllDocuments(const Query& query, DocumentStatus status) const
 	{
 		return FindAllDocuments(query, [status](const int document_id, DocumentStatus document_status, const int rating)
-										{
-											return status == document_status;
-										});
+			{
+				return status == document_status;
+			});
 	}
 
 	template <typename Criterion>
@@ -421,7 +431,7 @@ void TestExcludeStopWordsFromAddedDocumentContent()
 }
 
 
-void TestAddDocument()
+void TestAddingNewDocumentToSearchServer()
 {
 	const int doc_id = 13;
 	const string content = "the most loneliest day of my life"s;
@@ -435,7 +445,7 @@ void TestAddDocument()
 	}
 }
 
-void TestMinusWords()
+void TestExcludingDocumentsWithMinusWords()
 {
 	const int doc_id = 13;
 	const string content = "the most loneliest day of my life"s;
@@ -449,7 +459,7 @@ void TestMinusWords()
 	}
 }
 
-void TestMatchingDocuments()
+void TestMatchingDocumentsWithQuery()
 {
 	const int doc_id = 13;
 	const string content = "the most loneliest day of my life"s;
@@ -458,10 +468,10 @@ void TestMatchingDocuments()
 		SearchServer server;
 		server.SetStopWords("the of"s);
 		server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-		vector<string> tmp = { "loneliest"s, "most"s };
-		ASSERT(server.MatchDocument("the most loneliest week"s, 13) == tuple(tmp, DocumentStatus::ACTUAL));
-		tmp.clear();
-		ASSERT(server.MatchDocument("the most -loneliest week"s, 13) == tuple(tmp, DocumentStatus::ACTUAL));
+		vector<string> matched_words = { "loneliest"s, "most"s };
+		ASSERT(server.MatchDocument("the most loneliest week"s, 13) == tuple(matched_words, DocumentStatus::ACTUAL));
+		matched_words.clear();
+		ASSERT(server.MatchDocument("the most -loneliest week"s, 13) == tuple(matched_words, DocumentStatus::ACTUAL));
 	}
 }
 
@@ -473,32 +483,32 @@ void TestSortingDocuments()
 	search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
 	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
 	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-	const vector<Document> tmp = {
+	const vector <Document> sorted_documents_from_server = search_server.FindTopDocuments("пушистый ухоженный кот"s);
+	const vector<Document> correctly_sorted_documents = {
 		{ 1, 0.866434, 5 },
 		{ 0, 0.173287, 2 },
 		{ 2, 0.173287, -1 }
 	};
-	const auto tmp2 = search_server.FindTopDocuments("пушистый ухоженный кот"s);
-	for (size_t i = 0; i < 3; ++i)
-	{
-		ASSERT_EQUAL(tmp[i].id, tmp2[i].id);
-	}
+
+	ASSERT_EQUAL(sorted_documents_from_server, correctly_sorted_documents);
 }
 
-void TestRatingCompute()
+void TestDocumentRatingComputing()
 {
 	const int doc_id = 13;
 	const string content = "the most loneliest day of my life"s;
 	const vector<int> ratings = { 1, 2, 3, 4, 5 };
+	int correct_rating = accumulate(ratings.begin(), ratings.end(), 0) / static_cast<int>(ratings.size());
 	{
 		SearchServer server;
 		server.SetStopWords("the of"s);
 		server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-		ASSERT_EQUAL(server.FindTopDocuments("most"s).front().rating, 3);
+		ASSERT_EQUAL(server.FindTopDocuments("most"s).size(), 1);
+		ASSERT_EQUAL(server.FindTopDocuments("most"s).front().rating, correct_rating);
 	}
 }
 
-void TestUserPredicate()
+void TestFindingDocumentsWithUserPredicate()
 {
 	SearchServer search_server;
 	search_server.SetStopWords("и в на"s);
@@ -506,21 +516,19 @@ void TestUserPredicate()
 	search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
 	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
 	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
-	const vector<Document> tmp = {
+	const vector<Document> correct_documents_with_user_predicate = {
 		{ 0, 0.173287, 2 },
 		{ 2, 0.173287, -1 }
 	};
-	const auto tmp2 = search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating)
-																				{
-																					return document_id % 2 == 0;
-																				});
-	for (size_t i = 0; i < 2; ++i)
-	{
-		ASSERT_EQUAL(tmp2[i].id, tmp[i].id);
-	}
+	const vector<Document> found_documents_withs_user_predicate = search_server.FindTopDocuments("пушистый ухоженный кот"s, 
+														[](int document_id, DocumentStatus status, int rating)
+														{
+															return document_id % 2 == 0;
+														});
+	ASSERT_EQUAL(found_documents_withs_user_predicate, correct_documents_with_user_predicate);
 }
 
-void TestWithDocumentStatus()
+void TestFindingDocumentsWithUserDocumentStatus()
 {
 	SearchServer search_server;
 	search_server.SetStopWords("и в на"s);
@@ -529,12 +537,15 @@ void TestWithDocumentStatus()
 	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
 	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
 
-	vector<Document> tmp = { { 3, 0.231049, 9 } };
+	const vector<Document> correct_documents_with_user_documents_status = { { 3, 0.231049, 9 } };
+	const vector<Document> found_documents_with_user_documents_status = 
+		search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED);
 
-	ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED).front().id, tmp.front().id);
+	ASSERT_EQUAL(search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED), 
+				correct_documents_with_user_documents_status);
 }
 
-void TestTfIdfCompute()
+void TestTfIdfComputing()
 {
 	SearchServer search_server;
 	search_server.SetStopWords("и в на"s);
@@ -543,22 +554,21 @@ void TestTfIdfCompute()
 	search_server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
 	search_server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
 
-	vector<Document> tmp = { { 3, 0.231049, 9 } };
-
+	ASSERT(!search_server.FindTopDocuments("пушистый ухоженный кот"s).empty());
 	ASSERT(abs(search_server.FindTopDocuments("пушистый ухоженный кот"s).front().relevance - 0.866434) < 1e-6);
 }
 
 void TestSearchServer()
 {
 	RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
-	RUN_TEST(TestAddDocument);
-	RUN_TEST(TestMatchingDocuments);
-	RUN_TEST(TestMinusWords);
-	RUN_TEST(TestRatingCompute);
+	RUN_TEST(TestAddingNewDocumentToSearchServer);
+	RUN_TEST(TestMatchingDocumentsWithQuery);
+	RUN_TEST(TestExcludingDocumentsWithMinusWords);
+	RUN_TEST(TestDocumentRatingComputing);
 	RUN_TEST(TestSortingDocuments);
-	RUN_TEST(TestTfIdfCompute);
-	RUN_TEST(TestUserPredicate);
-	RUN_TEST(TestWithDocumentStatus);
+	RUN_TEST(TestTfIdfComputing);
+	RUN_TEST(TestFindingDocumentsWithUserPredicate);
+	RUN_TEST(TestFindingDocumentsWithUserDocumentStatus);
 }
 
 int main()
