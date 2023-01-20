@@ -100,6 +100,14 @@ int ReadLineWithNumber()
 	return result;
 }
 
+bool IsValidWord(const string& word)
+{
+	return none_of(word.begin(), word.end(), [](char c)
+		{
+			return c >= 0 && c <= 31;
+		});
+}
+
 vector<string> SplitIntoWords(const string& text)
 {
 	vector<string> words;
@@ -117,7 +125,10 @@ vector<string> SplitIntoWords(const string& text)
 		}
 	}
 	words.push_back(word);
-
+	if (!all_of(words.begin(), words.end(), IsValidWord))
+	{
+		throw invalid_argument("One or more stop words contain a special symbol");
+	}
 	return words;
 }
 
@@ -125,9 +136,9 @@ template <typename StringContainer>
 set<string> MakeUniqueNonEmptyStrings(const StringContainer& strings)
 {
 	set<string> non_empty_strings;
-	for (const string& str : strings) 
+	for (const string& str : strings)
 	{
-		if (!str.empty()) 
+		if (!str.empty())
 		{
 			non_empty_strings.insert(str);
 		}
@@ -153,12 +164,9 @@ public:
 	explicit SearchServer(const StringContainer& stop_words)
 		: stop_words_(MakeUniqueNonEmptyStrings(stop_words))
 	{
-		for(const string& word : stop_words_)
+		if (!all_of(stop_words.begin(), stop_words.end(), IsValidWord))
 		{
-			if(!IsValidWord(word))
-			{
-				throw invalid_argument("One or more stop words contain a special symbol");
-			}
+			throw invalid_argument("One or more stop words contain a special symbol");
 		}
 	}
 
@@ -183,22 +191,14 @@ public:
 		}
 
 		const vector<string> words = SplitIntoWordsNoStop(document);
-
-		for(const string& word : words)
-		{
-			// If any word contain special symbol (0 - 31)
-			if(!IsValidWord(word))
-			{
-				throw invalid_argument("One or more words contain a special symbol");
-			}
-		}
-
 		const double inv_word_count = 1.0 / words.size();
+
 		for (const string& word : words)
 		{
 			word_to_document_freqs_[word][document_id] += inv_word_count;
 		}
 		documents_.emplace(document_id, DocumentInfo{ ComputeAverageRating(ratings), status });
+		documents_id_in_adding_order.emplace_back(document_id);
 	}
 
 	int GetDocumentCount() const
@@ -208,12 +208,7 @@ public:
 
 	int GetDocumentId(int index) const
 	{
-		if(index < 0 || index >= GetDocumentCount())
-		{
-			throw out_of_range("Index is out of range [0, " + to_string(GetDocumentCount()) + ")");
-		}
-
-		return next(documents_.begin(), index)->first;
+		return documents_id_in_adding_order.at(index);
 	}
 
 	vector<Document> FindTopDocuments(const string& raw_query) const
@@ -288,17 +283,11 @@ private:
 
 	map<int, DocumentInfo> documents_;
 
+	vector <int> documents_id_in_adding_order;
+
 	map<string, map<int, double>> word_to_document_freqs_;
 
 	set<string> stop_words_;
-
-	static bool IsValidWord(const string& word)
-	{
-		return none_of(word.begin(), word.end(), [](char c)
-			{
-				return c >= 0 && c <= 31;
-			});
-	}
 
 	bool IsStopWord(const string& word) const
 	{
@@ -360,14 +349,6 @@ private:
 	{
 		Query query;
 		const vector <string> words(SplitIntoWords(text));
-
-		for(const string& word : words)
-		{
-			if(!IsValidWord(word))
-			{
-				throw invalid_argument("One or more words contain a special symbol");
-			}
-		}
 
 		for (const string& word : words)
 		{
@@ -673,5 +654,6 @@ int main()
 	setlocale(LC_ALL, "RUS");
 	TestSearchServer();
 	cout << "Search server testing finished"s << endl;
+
 	return 0;
 }
