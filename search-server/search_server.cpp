@@ -1,5 +1,6 @@
 #include "search_server.h"
 #include <cmath>
+#include <algorithm>
 
 SearchServer::SearchServer() = default;
 
@@ -24,6 +25,15 @@ void SearchServer::AddDocument(int document_id, const std::string& document,
 	}
 
 	const std::vector<std::string> words = SplitIntoWordsNoStop(document);
+
+	if (!std::all_of(words.begin(), words.end(), [this](const std::string& word)
+		{
+			return IsValidWord(word);
+		}))
+	{
+		throw std::invalid_argument("One or more words contain a special symbol");
+	}
+
 	const double inv_word_count = 1.0 / words.size();
 
 	for (const std::string& word : words)
@@ -101,7 +111,7 @@ std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& t
 	return words;
 }
 
-int SearchServer::ComputeAverageRating(const std::vector<int>&ratings)
+int SearchServer::ComputeAverageRating(const std::vector<int>& ratings)
 {
 	if (ratings.size() == 0)
 	{
@@ -126,10 +136,18 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(std::string text) const
 	return { text,is_minus,IsStopWord(text) };
 }
 
-SearchServer::Query SearchServer::ParseQuery(const std::string & text) const
+SearchServer::Query SearchServer::ParseQuery(const std::string& text) const
 {
 	Query query;
 	const std::vector<std::string> words(SplitIntoWords(text));
+
+	if (!std::all_of(words.begin(), words.end(), [this](const std::string& word)
+		{
+			return IsValidWord(word);
+		}))
+	{
+		throw std::invalid_argument("One or more words contain a special symbol");
+	}
 
 	for (const std::string& word : words)
 	{
@@ -151,7 +169,7 @@ SearchServer::Query SearchServer::ParseQuery(const std::string & text) const
 	return query;
 }
 
-double SearchServer::ComputeWordInverseDocumentFreq(const std::string & word) const
+double SearchServer::ComputeWordInverseDocumentFreq(const std::string& word) const
 {
 	return std::log(documents_.size() * 1.0 / word_to_document_freqs_.at(word).size());
 }
@@ -161,5 +179,13 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query& query, Documen
 	return FindAllDocuments(query, [status](const int document_id, DocumentStatus document_status, const int rating)
 		{
 			return status == document_status;
+		});
+}
+
+bool SearchServer::IsValidWord(const std::string& word) const
+{
+	return none_of(word.begin(), word.end(), [](char c)
+		{
+			return c >= 0 && c <= 31;
 		});
 }

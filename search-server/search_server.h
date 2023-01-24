@@ -57,6 +57,8 @@ private:
 
 	bool IsStopWord(const std::string& word) const;
 
+	bool IsValidWord(const std::string& word) const;
+
 	std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
 
 	static int ComputeAverageRating(const std::vector<int>& ratings);
@@ -91,9 +93,12 @@ template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
 	: stop_words_(MakeUniqueNonEmptyStrings(stop_words))
 {
-	if (!all_of(stop_words.begin(), stop_words.end(), IsValidWord))
+	if (!std::all_of(stop_words_.begin(), stop_words_.end(), [this](const std::string& word)
+		{
+			return IsValidWord(word);
+		}))
 	{
-		throw std::invalid_argument("One or more stop words contain a special symbol");
+		throw std::invalid_argument("Ono or more stop words contain a special symbol");
 	}
 }
 

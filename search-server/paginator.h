@@ -38,7 +38,8 @@ public:
 
 private:
 
-	RandomIt begin_, end_;
+	RandomIt begin_;
+	RandomIt end_;
 };
 
 template <typename RandomIt>

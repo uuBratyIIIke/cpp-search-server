@@ -5,22 +5,22 @@ const double EPSILON = 1e-6;
 
 enum class DocumentStatus
 {
-    ACTUAL,
-    IRRELEVANT,
-    BANNED,
-    REMOVED
-    };
+	ACTUAL,
+	IRRELEVANT,
+	BANNED,
+	REMOVED
+};
 
 struct Document
 {
 
-    Document();
+	Document();
 
-    Document(int id, double relevance, int rating);
+	Document(int id, double relevance, int rating);
 
-    int id = 0;
-    double relevance = 0;
-    int rating = 0;
+	int id = 0;
+	double relevance = 0;
+	int rating = 0;
 };
 
 std::ostream& operator<<(std::ostream& os, const Document& doc);
