@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <set>
 #include <stdexcept>
+
 #include "document.h"
 #include "string_processing.h"
+#include "log_duration.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -23,6 +25,14 @@ public:
 
 	explicit SearchServer(const std::string& stop_words_text);
 
+	std::vector<int>::const_iterator begin() const;
+
+	std::vector<int>::iterator  begin();
+
+	std::vector<int>::const_iterator end() const;
+
+	std::vector<int>::iterator end();
+
 	void SetStopWords(const std::string& text);
 
 	void AddDocument(int document_id, const std::string& document,
@@ -30,14 +40,23 @@ public:
 
 	int GetDocumentCount() const;
 
-	int GetDocumentId(int index) const;
-	
+	const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+
+	//int GetDocumentId(int index) const;
+
 	std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
 
 	template <typename Criterion>
 	std::vector<Document> FindTopDocuments(const std::string& raw_query, Criterion criterion) const;
 
 	std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
+
+	void RemoveDocument(int document_id);
+
+	const auto& GetWordsSetToDocument() const 
+	{
+		return words_set_to_documents_;
+	}
 
 private:
 
@@ -48,11 +67,10 @@ private:
 	};
 
 	std::map<int, DocumentInfo> documents_;
-
-	std::vector <int> documents_id_in_adding_order;
-
+	std::vector <int> documents_id_in_adding_order_;
 	std::map<std::string, std::map<int, double>> word_to_document_freqs_;
-
+	std::map<int, std::map<std::string, double>> document_to_word_freqs_;
+	std::map<std::set<std::string>, std::set<int>> words_set_to_documents_;
 	std::set<std::string> stop_words_;
 
 	bool IsStopWord(const std::string& word) const;
@@ -105,6 +123,7 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 template <typename Criterion>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, Criterion criterion) const
 {
+	//LOG_DURATION_STREAM(("Результаты поиска по запросу: " + raw_query), std::cout);
 	const Query query = ParseQuery(raw_query);
 
 	auto matched_documents = FindAllDocuments(query, criterion);
