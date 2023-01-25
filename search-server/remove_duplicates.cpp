@@ -1,12 +1,11 @@
 #include "remove_duplicates.h"
 
 #include <set>
-#include <map>
 
 void RemoveDuplicates(SearchServer& search_server)
 {
 	std::vector<int> documents_to_remove;
-	std::map<std::set<std::string>, int> first_unique_documents;
+	std::set<std::set<std::string>> first_unique_documents;
 
 	for (const int document_id : search_server)
 	{
@@ -21,7 +20,7 @@ void RemoveDuplicates(SearchServer& search_server)
 		}
 		else
 		{
-			first_unique_documents[words_in_document] = document_id;
+			first_unique_documents.insert(words_in_document);
 		}
 	}
 
