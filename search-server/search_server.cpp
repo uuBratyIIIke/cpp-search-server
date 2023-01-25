@@ -42,9 +42,8 @@ void SearchServer::AddDocument(int document_id, const std::string& document,
 		word_to_document_freqs_[word][document_id] += inv_word_count;
 		document_to_word_freqs_[document_id][word] += inv_word_count;
 	}
-	words_set_to_documents_[words_set].insert(document_id);
 	documents_.emplace(document_id, DocumentInfo{ ComputeAverageRating(ratings), status });
-	documents_id_in_adding_order_.emplace_back(document_id);
+	document_ids_.insert(document_id);
 }
 
 int SearchServer::GetDocumentCount() const
@@ -52,24 +51,24 @@ int SearchServer::GetDocumentCount() const
 	return static_cast<int>(documents_.size());
 }
 
-std::vector<int>::const_iterator SearchServer::begin() const
+std::set<int>::const_iterator SearchServer::begin() const
 {
-	return documents_id_in_adding_order_.begin();
+	return document_ids_.begin();
 }
 
-std::vector<int>::iterator SearchServer::begin()
+std::set<int>::iterator SearchServer::begin()
 {
-	return documents_id_in_adding_order_.begin();
+	return document_ids_.begin();
 }
 
-std::vector<int>::const_iterator SearchServer::end() const
+std::set<int>::const_iterator SearchServer::end() const
 {
-	return documents_id_in_adding_order_.end();
+	return document_ids_.end();
 }
 
-std::vector<int>::iterator SearchServer::end()
+std::set<int>::iterator SearchServer::end()
 {
-	return documents_id_in_adding_order_.end();
+	return document_ids_.end();
 }
 
 //int SearchServer::GetDocumentId(int index) const
@@ -218,33 +217,23 @@ bool SearchServer::IsValidWord(const std::string& word) const
 const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const
 {
 	static std::map<std::string, double> word_freqs;
-	const auto result = document_to_word_freqs_.lower_bound(document_id);
-	if(result->first == document_id)
+	const auto result = document_to_word_freqs_.find(document_id);
+	if(result == document_to_word_freqs_.end())
 	{
-		return result->second;
+		return word_freqs;
 	}
 
-	return word_freqs;
+	return result->second;
 }
 
 void SearchServer::RemoveDocument(int document_id)
 {
 	documents_.erase(document_id);
-	const auto id_to_erase = std::lower_bound(documents_id_in_adding_order_.begin(), documents_id_in_adding_order_.end(), document_id);
-	if(*id_to_erase == document_id)
+	document_ids_.erase(document_id);
+	const auto& words_in_document = GetWordFrequencies(document_id);
+	for(const auto& [word, _] : words_in_document)
 	{
-		documents_id_in_adding_order_.erase(id_to_erase);
+		word_to_document_freqs_[word].erase(document_id);
 	}
-
-	const auto& words_in_document = document_to_word_freqs_.lower_bound(document_id);
-	if (words_in_document->first == document_id)
-	{
-		for(const auto& [word, _] : words_in_document->second)
-		{
-			word_to_document_freqs_[word].erase(document_id);
-		}
-	}
-
 	document_to_word_freqs_.erase(document_id);
-
 }

@@ -25,13 +25,13 @@ public:
 
 	explicit SearchServer(const std::string& stop_words_text);
 
-	std::vector<int>::const_iterator begin() const;
+	std::set<int>::const_iterator begin() const;
 
-	std::vector<int>::iterator  begin();
+	std::set<int>::iterator  begin();
 
-	std::vector<int>::const_iterator end() const;
+	std::set<int>::const_iterator end() const;
 
-	std::vector<int>::iterator end();
+	std::set<int>::iterator end();
 
 	void SetStopWords(const std::string& text);
 
@@ -53,11 +53,6 @@ public:
 
 	void RemoveDocument(int document_id);
 
-	const auto& GetWordsSetToDocument() const 
-	{
-		return words_set_to_documents_;
-	}
-
 private:
 
 	struct DocumentInfo
@@ -67,10 +62,9 @@ private:
 	};
 
 	std::map<int, DocumentInfo> documents_;
-	std::vector <int> documents_id_in_adding_order_;
+	std::set<int> document_ids_;
 	std::map<std::string, std::map<int, double>> word_to_document_freqs_;
 	std::map<int, std::map<std::string, double>> document_to_word_freqs_;
-	std::map<std::set<std::string>, std::set<int>> words_set_to_documents_;
 	std::set<std::string> stop_words_;
 
 	bool IsStopWord(const std::string& word) const;
@@ -153,7 +147,7 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query& query, Criteri
 			continue;
 		}
 		const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-		for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word))
+		for (const auto& [document_id, term_freq] : word_to_document_freqs_.at(word))
 		{
 			if (criterion(document_id, documents_.at(document_id).status, documents_.at(document_id).rating))
 			{
@@ -168,14 +162,14 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query& query, Criteri
 		{
 			continue;
 		}
-		for (const auto [document_id, _] : word_to_document_freqs_.at(word))
+		for (const auto& [document_id, _] : word_to_document_freqs_.at(word))
 		{
 			document_to_relevance.erase(document_id);
 		}
 	}
 
 	std::vector<Document> matched_documents;
-	for (const auto [document_id, relevance] : document_to_relevance)
+	for (const auto& [document_id, relevance] : document_to_relevance)
 	{
 		matched_documents.push_back({ document_id, relevance, documents_.at(document_id).rating });
 	}
