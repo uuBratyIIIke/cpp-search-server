@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& os, const std::map<Key, Value>& mp)
 }
 
 template <typename T, typename U>
-void AssertEqualImpl(const T& t, const U& u, const std::string& t_str, const std::string& u_str, 
+void AssertEqualImpl(const T& t, const U& u, const std::string& t_str, const std::string& u_str,
 	const std::string& file, const std::string& func, unsigned line, const std::string& hint)
 {
 	if (t != u)

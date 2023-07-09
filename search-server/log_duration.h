@@ -21,7 +21,7 @@ public:
 
     LogDuration(const std::string& name, std::ostream& output = std::cerr)
         :name_(name)
-        ,output_(output)
+        , output_(output)
     {
         /*if (output_.rdbuf() == std::cout.rdbuf())
         {

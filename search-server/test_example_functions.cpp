@@ -85,7 +85,7 @@ void TestMatchingDocumentsWithQuery()
 		SearchServer server;
 		server.SetStopWords("the of"s);
 		server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-		std::vector<std::string> matched_words = { "loneliest"s, "most"s };
+		std::vector<std::string_view> matched_words = { "loneliest"s, "most"s };
 		ASSERT(server.MatchDocument("the most loneliest week"s, 13) == std::tuple(matched_words, DocumentStatus::ACTUAL));
 		matched_words.clear();
 		ASSERT(server.MatchDocument("the most -loneliest week"s, 13) == std::tuple(matched_words, DocumentStatus::ACTUAL));
